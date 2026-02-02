@@ -31,56 +31,26 @@ body{
 
 /* UI */
 h3{margin:4px 0 12px}
-label{
-  font-size:13px;
-  opacity:.8;
-  margin-top:10px;
-  display:block;
-}
+label{font-size:13px;opacity:.8;margin-top:10px;display:block}
 input,textarea,button{
   width:100%;
   margin-top:6px;
   padding:8px;
   border-radius:10px;
   border:none;
-  box-sizing:border-box;
 }
-textarea{
-  background:#000;
-  color:#00ff88;
-  font-size:12px;
-  height:110px;
-}
-button{
-  background:#00ff88;
-  color:#000;
-  font-weight:600;
-  cursor:pointer;
-  margin-top:10px;
-}
+textarea{background:#000;color:#00ff88;font-size:12px;height:110px}
+button{background:#00ff88;color:#000;font-weight:600;cursor:pointer}
 .mode{display:flex;gap:6px;margin-bottom:10px}
 .mode button{flex:1}
 
 /* PRESETS */
-.presets{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-}
+.presets{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .preset{
-  padding:10px;
-  border-radius:12px;
-  background:#222;
-  cursor:pointer;
-  font-size:13px;
-  text-align:center;
-  opacity:.7;
+  padding:10px;border-radius:12px;background:#222;
+  cursor:pointer;font-size:13px;text-align:center;opacity:.7
 }
-.preset.active{
-  background:#00ff88;
-  color:#000;
-  opacity:1;
-}
+.preset.active{background:#00ff88;color:#000;opacity:1}
 </style>
 </head>
 
@@ -118,10 +88,10 @@ button{
 <div id="preview"></div>
 
 <script>
-/* PRESETS */
+/* ===== PRESETS ===== */
 const PRESETS={
   spotify:{name:"Spotify",accent:"#1db954",bg:"rgba(255,255,255,.08)",blur:14,radius:20,glow:false},
-  neon:{name:"Neon",accent:"#00ffcc",bg:"rgba(0,0,0,.35)",blur:20,radius:24,glow:true}
+  neon:{name:"Neon",accent:"#00faff",bg:"rgba(0,0,0,.35)",blur:20,radius:24,glow:true}
 };
 let current={preset:"spotify"};
 
@@ -144,10 +114,10 @@ function applyPreset(k){
   update();
 }
 
-/* PLAYER */
+/* ===== PLAYER ===== */
 function renderPlayer(target,cfg){
   const glow = cfg.glow
-    ? `box-shadow:0 0 12px ${cfg.accent},0 0 24px ${cfg.accent}66;`
+    ? `box-shadow:0 0 14px ${cfg.accent},0 0 28px ${cfg.accent}66;`
     : `box-shadow:none;`;
 
   target.innerHTML=`
@@ -155,7 +125,7 @@ function renderPlayer(target,cfg){
 <style>
 #GENIALLY_AUDIO{padding:18px;--accent:${cfg.accent}}
 #GENIALLY_AUDIO button{all:unset}
-#GENIALLY_AUDIO .player{
+.player{
   width:280px;
   background:${cfg.bg};
   backdrop-filter:blur(${cfg.blur}px);
@@ -165,7 +135,7 @@ function renderPlayer(target,cfg){
   color:white;
   ${glow}
 }
-#GENIALLY_AUDIO img{width:100%;border-radius:14px}
+img{width:100%;border-radius:14px}
 .ctrl{display:flex;justify-content:center;gap:14px;margin:10px 0}
 .ctrl button{
   width:46px;height:46px;border-radius:50%;
@@ -174,9 +144,11 @@ function renderPlayer(target,cfg){
   box-shadow:0 0 8px var(--accent);
   cursor:pointer;
 }
-.ctrl svg{width:22px;height:22px;fill:#000}
+svg{width:22px;height:22px;fill:#000}
+.icon{display:none}
+#play.paused .play{display:block}
+#play.playing .pause{display:block}
 input[type=range]{width:100%}
-.volume{font-size:12px;opacity:.8;margin-top:4px}
 .list{font-size:12px;text-align:left}
 .list div{padding:6px;cursor:pointer;opacity:.7}
 .list div.active{color:var(--accent);opacity:1}
@@ -190,12 +162,21 @@ input[type=range]{width:100%}
 
   <div class="ctrl">
     <button id="prev">${svgPrev()}</button>
-    <button id="play">${svgPlay()}</button>
+
+    <button id="play" class="paused">
+      <svg class="icon play" viewBox="0 0 24 24">
+        <polygon points="5,3 19,12 5,21"/>
+      </svg>
+      <svg class="icon pause" viewBox="0 0 24 24">
+        <rect x="5" y="3" width="5" height="18"/>
+        <rect x="14" y="3" width="5" height="18"/>
+      </svg>
+    </button>
+
     <button id="next">${svgNext()}</button>
   </div>
 
   <input type="range" id="volume" min="0" max="1" step="0.01">
-  <div class="volume">Громкость</div>
 
   <div class="ctrl">
     <button id="shuffle">${svgShuffle()}</button>
@@ -209,12 +190,13 @@ input[type=range]{width:100%}
 
   const root=target.querySelector("#GENIALLY_AUDIO");
   const a=root.querySelector("audio");
+  const playBtn=root.querySelector("#play");
   const t=root.querySelector("#title");
   const s=root.querySelector("#seek");
   const v=root.querySelector("#volume");
   const list=root.querySelector(".list");
-  let i=0,shuffle=false,repeat=false;
 
+  let i=0,shuffle=false,repeat=false;
   a.volume=1; v.value=1;
 
   const names=cfg.tracks.map(x=>x.split("/").pop().replace(".mp3",""));
@@ -229,15 +211,25 @@ input[type=range]{width:100%}
     return shuffle?Math.floor(Math.random()*cfg.tracks.length):(i+1)%cfg.tracks.length;
   }
   function load(x,auto){
-    i=x;a.src=cfg.tracks[i];t.textContent=names[i];
+    i=x;
+    a.src=cfg.tracks[i];
+    t.textContent=names[i];
     [...list.children].forEach((e,n)=>e.classList.toggle("active",n===i));
     if(auto)a.play();
   }
   load(0);
 
-  root.querySelector("#play").onclick=()=>a.paused?a.play():a.pause();
-  a.onplay=()=>root.querySelector("#play").innerHTML=svgPause();
-  a.onpause=()=>root.querySelector("#play").innerHTML=svgPlay();
+  playBtn.onclick=()=>a.paused?a.play():a.pause();
+
+  a.onplay=()=>{
+    playBtn.classList.remove("paused");
+    playBtn.classList.add("playing");
+  };
+  a.onpause=()=>{
+    playBtn.classList.remove("playing");
+    playBtn.classList.add("paused");
+  };
+
   a.ontimeupdate=()=>s.value=a.currentTime/a.duration*100||0;
   s.oninput=()=>a.currentTime=a.duration*s.value/100;
   v.oninput=()=>a.volume=v.value;
@@ -250,8 +242,6 @@ input[type=range]{width:100%}
 }
 
 /* SVG ICONS */
-const svgPlay=()=>`<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>`;
-const svgPause=()=>`<svg viewBox="0 0 24 24"><rect x="5" y="3" width="5" height="18"/><rect x="14" y="3" width="5" height="18"/></svg>`;
 const svgPrev=()=>`<svg viewBox="0 0 24 24"><polygon points="19,3 9,12 19,21"/><rect x="5" y="3" width="3" height="18"/></svg>`;
 const svgNext=()=>`<svg viewBox="0 0 24 24"><polygon points="5,3 15,12 5,21"/><rect x="16" y="3" width="3" height="18"/></svg>`;
 const svgShuffle=()=>`<svg viewBox="0 0 24 24"><path d="M16 3h5v5"/><path d="M4 20l16-16"/></svg>`;
