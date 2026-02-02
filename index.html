@@ -14,6 +14,7 @@ body{
   height:100vh;
 }
 
+/* ---------- PANEL ---------- */
 #panel{
   width:380px;
   padding:16px;
@@ -35,9 +36,9 @@ label{
   font-size:13px;
   opacity:.75;
   margin-top:10px;
-  display:block
+  display:block;
 }
-input,textarea,select,button{
+input,textarea,button{
   width:100%;
   margin-top:6px;
   padding:8px;
@@ -49,7 +50,7 @@ textarea{
   background:#000;
   color:#00ff88;
   font-size:12px;
-  height:110px
+  height:110px;
 }
 button{
   background:#00ff88;
@@ -66,7 +67,7 @@ button{
 }
 .mode button{flex:1}
 
-/* ---------- Presets ---------- */
+/* ---------- PRESETS ---------- */
 .presets{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -92,7 +93,7 @@ button{
 <body>
 
 <div id="panel">
-  <h3>PRO Audio Player</h3>
+  <h3>ПРОФЕССИОНАЛЬНЫЙ Аудиоплеер</h3>
 
   <div class="mode">
     <button onclick="setMode('editor')">Редактор</button>
@@ -108,7 +109,7 @@ button{
   <label>Обложка</label>
   <input id="cover">
 
-  <label>MP3 / GitHub raw</label>
+  <label>MP3 / raw GitHub (1 в строке)</label>
   <textarea id="tracks"></textarea>
 
   <label>
@@ -126,14 +127,14 @@ button{
 /* ---------- PRESETS ---------- */
 const PRESETS={
   spotify:{name:"Spotify",accent:"#1db954",bg:"rgba(255,255,255,.08)",blur:14,radius:20,glow:false},
-  neon:{name:"Neon",accent:"#ffee00",bg:"rgba(0,0,0,.35)",blur:20,radius:24,glow:true},
+  neon:{name:"Neon",accent:"#00faff",bg:"rgba(0,0,0,.35)",blur:20,radius:24,glow:true},
   minimal:{name:"Minimal",accent:"#4a90e2",bg:"rgba(255,255,255,.12)",blur:6,radius:14,glow:false},
   soft:{name:"Soft Glass",accent:"#ff9ecb",bg:"rgba(255,255,255,.18)",blur:10,radius:22,glow:false}
 };
 
 let current={preset:"spotify"};
 
-/* ---------- UI ---------- */
+/* ---------- PRESET UI ---------- */
 function buildPresets(){
   presets.innerHTML="";
   Object.entries(PRESETS).forEach(([k,p])=>{
@@ -157,7 +158,7 @@ function applyPreset(key){
 /* ---------- PLAYER (GENIALLY SAFE) ---------- */
 function renderPlayer(target,cfg){
   const glow = cfg.glow
-    ? `box-shadow:0 0 18px ${cfg.accent},0 0 36px ${cfg.accent}88;`
+    ? `box-shadow:0 0 12px ${cfg.accent},0 0 24px ${cfg.accent}66;`
     : `box-shadow:none;`;
 
   target.innerHTML=`
@@ -166,12 +167,15 @@ function renderPlayer(target,cfg){
 #GENIALLY_AUDIO{
   position:relative;
   z-index:9999;
+  padding:18px;
+  box-sizing:border-box;
   --accent:${cfg.accent};
   font-family:Arial,sans-serif;
 }
 
 /* RESET GENIALLY */
 #GENIALLY_AUDIO button{all:unset}
+#GENIALLY_AUDIO input{all:unset}
 
 /* PLAYER */
 #GENIALLY_AUDIO .player{
@@ -188,13 +192,14 @@ function renderPlayer(target,cfg){
   width:100%;
   border-radius:14px;
 }
-#GENIALLY_AUDIO .ctrl{
+#GENIALLY_AUDIO .ctrl,
+#GENIALLY_AUDIO .ctrl2{
   display:flex;
   justify-content:center;
   gap:12px;
   margin:10px 0;
 }
-#GENIALLY_AUDIO .ctrl button{
+#GENIALLY_AUDIO button{
   width:42px;
   height:42px;
   border-radius:50%;
@@ -204,10 +209,13 @@ function renderPlayer(target,cfg){
   align-items:center;
   justify-content:center;
   cursor:pointer;
-  box-shadow:0 0 10px var(--accent);
+  box-shadow:0 0 8px var(--accent);
+}
+#GENIALLY_AUDIO input[type=range]{
+  width:100%;
 }
 #GENIALLY_AUDIO .list{
-  max-height:140px;
+  max-height:120px;
   overflow:auto;
   font-size:12px;
   text-align:left;
@@ -226,12 +234,22 @@ function renderPlayer(target,cfg){
 <div class="player">
   <img src="${cfg.cover}">
   <div id="title"></div>
+
   <input type="range" id="seek">
+
   <div class="ctrl">
     <button id="prev">◀</button>
     <button id="play">▶</button>
     <button id="next">▶▶</button>
   </div>
+
+  <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+
+  <div class="ctrl2">
+    <button id="shuffle">🔀</button>
+    <button id="repeat">🔁</button>
+  </div>
+
   <div class="list"></div>
   <audio></audio>
 </div>
@@ -241,8 +259,9 @@ function renderPlayer(target,cfg){
   const a=root.querySelector("audio");
   const t=root.querySelector("#title");
   const s=root.querySelector("#seek");
+  const v=root.querySelector("#volume");
   const list=root.querySelector(".list");
-  let i=0;
+  let i=0, shuffle=false, repeat=false;
 
   const names=cfg.tracks.map(x=>decodeURIComponent(x.split("/").pop().replace(".mp3","")));
 
@@ -252,6 +271,12 @@ function renderPlayer(target,cfg){
     d.onclick=()=>load(idx,true);
     list.appendChild(d);
   });
+
+  function nextIndex(){
+    return shuffle
+      ? Math.floor(Math.random()*cfg.tracks.length)
+      : (i+1)%cfg.tracks.length;
+  }
 
   function load(x,auto){
     i=x;
@@ -266,10 +291,25 @@ function renderPlayer(target,cfg){
   root.querySelector("#play").onclick=()=>a.paused?a.play():a.pause();
   a.onplay=()=>root.querySelector("#play").textContent="❚❚";
   a.onpause=()=>root.querySelector("#play").textContent="▶";
+
   a.ontimeupdate=()=>s.value=a.currentTime/a.duration*100||0;
   s.oninput=()=>a.currentTime=a.duration*s.value/100;
-  root.querySelector("#next").onclick=()=>load((i+1)%cfg.tracks.length,true);
+
+  v.oninput=()=>a.volume=v.value;
+
+  root.querySelector("#next").onclick=()=>load(nextIndex(),true);
   root.querySelector("#prev").onclick=()=>load((i-1+cfg.tracks.length)%cfg.tracks.length,true);
+
+  root.querySelector("#shuffle").onclick=()=>{
+    shuffle=!shuffle;
+    root.querySelector("#shuffle").style.opacity=shuffle?"1":".4";
+  };
+  root.querySelector("#repeat").onclick=()=>{
+    repeat=!repeat;
+    root.querySelector("#repeat").style.opacity=repeat?"1":".4";
+  };
+
+  a.onended=()=>repeat?(a.currentTime=0,a.play()):load(nextIndex(),true);
 }
 
 /* ---------- UPDATE ---------- */
@@ -304,8 +344,8 @@ const preview=document.getElementById("preview");
 const code=document.getElementById("code");
 
 cover.value="https://picsum.photos/300";
-tracks.value=`https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3
-https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3`;
+tracks.value=`https://raw.githubusercontent.com/USERNAME/REPO/main/audio/track1.mp3
+https://raw.githubusercontent.com/USERNAME/REPO/main/audio/track2.mp3`;
 
 applyPreset("spotify");
 </script>
