@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Genially Audio Player PRO</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Inter, Arial, sans-serif;
+  background:#0e0e0e;
+  color:#fff;
+  display:flex;
+  height:100vh;
+}
+
+#panel{
+  width:380px;
+  padding:16px;
+  background:#151515;
+  box-sizing:border-box;
+  overflow:auto;
+}
+
+#preview{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* ---------- UI ---------- */
+h3{margin:4px 0 12px}
+label{
+  font-size:13px;
+  opacity:.75;
+  margin-top:10px;
+  display:block
+}
+input,textarea,select,button{
+  width:100%;
+  margin-top:6px;
+  padding:8px;
+  border-radius:10px;
+  border:none;
+  box-sizing:border-box;
+}
+textarea{
+  background:#000;
+  color:#00ff88;
+  font-size:12px;
+  height:110px
+}
+button{
+  background:#00ff88;
+  color:#000;
+  font-weight:600;
+  cursor:pointer;
+  margin-top:10px;
+}
+
+.mode{
+  display:flex;
+  gap:6px;
+  margin-bottom:10px;
+}
+.mode button{flex:1}
+
+/* ---------- Presets ---------- */
+.presets{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.preset{
+  padding:10px;
+  border-radius:12px;
+  background:#222;
+  cursor:pointer;
+  font-size:13px;
+  text-align:center;
+  opacity:.7;
+}
+.preset.active{
+  background:#00ff88;
+  color:#000;
+  opacity:1;
+}
+</style>
+</head>
+
+<body>
+
+<div id="panel">
+  <h3>PRO Audio Player</h3>
+
+  <div class="mode">
+    <button onclick="setMode('editor')">Редактор</button>
+    <button onclick="setMode('player')">Игрок</button>
+  </div>
+
+  <label>Пресеты</label>
+  <div class="presets" id="presets"></div>
+
+  <label>Цвет акцента</label>
+  <input type="color" id="accent">
+
+  <label>Обложка</label>
+  <input id="cover">
+
+  <label>MP3 / GitHub raw</label>
+  <textarea id="tracks"></textarea>
+
+  <label>
+    <input type="checkbox" id="glowToggle">
+    ✨ Неоновое свечение
+  </label>
+
+  <button onclick="update()">Получить код</button>
+  <textarea id="code" placeholder="Код для Genially"></textarea>
+</div>
+
+<div id="preview"></div>
+
+<script>
+/* ---------- PRESETS ---------- */
+const PRESETS={
+  spotify:{name:"Spotify",accent:"#1db954",bg:"rgba(255,255,255,.08)",blur:14,radius:20,glow:false},
+  neon:{name:"Neon",accent:"#ffee00",bg:"rgba(0,0,0,.35)",blur:20,radius:24,glow:true},
+  minimal:{name:"Minimal",accent:"#4a90e2",bg:"rgba(255,255,255,.12)",blur:6,radius:14,glow:false},
+  soft:{name:"Soft Glass",accent:"#ff9ecb",bg:"rgba(255,255,255,.18)",blur:10,radius:22,glow:false}
+};
+
+let current={preset:"spotify"};
+
+/* ---------- UI ---------- */
+function buildPresets(){
+  presets.innerHTML="";
+  Object.entries(PRESETS).forEach(([k,p])=>{
+    const d=document.createElement("div");
+    d.className="preset"+(k===current.preset?" active":"");
+    d.textContent=p.name;
+    d.onclick=()=>applyPreset(k);
+    presets.appendChild(d);
+  });
+}
+
+function applyPreset(key){
+  current.preset=key;
+  Object.assign(current,PRESETS[key]);
+  accent.value=current.accent;
+  glowToggle.checked=!!current.glow;
+  buildPresets();
+  update();
+}
+
+/* ---------- PLAYER (GENIALLY SAFE) ---------- */
+function renderPlayer(target,cfg){
+  const glow = cfg.glow
+    ? `box-shadow:0 0 18px ${cfg.accent},0 0 36px ${cfg.accent}88;`
+    : `box-shadow:none;`;
+
+  target.innerHTML=`
+<div id="GENIALLY_AUDIO">
+<style>
+#GENIALLY_AUDIO{
+  position:relative;
+  z-index:9999;
+  --accent:${cfg.accent};
+  font-family:Arial,sans-serif;
+}
+
+/* RESET GENIALLY */
+#GENIALLY_AUDIO button{all:unset}
+
+/* PLAYER */
+#GENIALLY_AUDIO .player{
+  width:280px;
+  background:${cfg.bg};
+  backdrop-filter:blur(${cfg.blur}px);
+  border-radius:${cfg.radius}px;
+  padding:16px;
+  color:white;
+  text-align:center;
+  ${glow}
+}
+#GENIALLY_AUDIO img{
+  width:100%;
+  border-radius:14px;
+}
+#GENIALLY_AUDIO .ctrl{
+  display:flex;
+  justify-content:center;
+  gap:12px;
+  margin:10px 0;
+}
+#GENIALLY_AUDIO .ctrl button{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  background:var(--accent);
+  color:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  box-shadow:0 0 10px var(--accent);
+}
+#GENIALLY_AUDIO .list{
+  max-height:140px;
+  overflow:auto;
+  font-size:12px;
+  text-align:left;
+}
+#GENIALLY_AUDIO .list div{
+  padding:6px;
+  cursor:pointer;
+  opacity:.7;
+}
+#GENIALLY_AUDIO .list div.active{
+  color:var(--accent);
+  opacity:1;
+}
+</style>
+
+<div class="player">
+  <img src="${cfg.cover}">
+  <div id="title"></div>
+  <input type="range" id="seek">
+  <div class="ctrl">
+    <button id="prev">◀</button>
+    <button id="play">▶</button>
+    <button id="next">▶▶</button>
+  </div>
+  <div class="list"></div>
+  <audio></audio>
+</div>
+</div>`;
+
+  const root=target.querySelector("#GENIALLY_AUDIO");
+  const a=root.querySelector("audio");
+  const t=root.querySelector("#title");
+  const s=root.querySelector("#seek");
+  const list=root.querySelector(".list");
+  let i=0;
+
+  const names=cfg.tracks.map(x=>decodeURIComponent(x.split("/").pop().replace(".mp3","")));
+
+  names.forEach((n,idx)=>{
+    const d=document.createElement("div");
+    d.textContent=n;
+    d.onclick=()=>load(idx,true);
+    list.appendChild(d);
+  });
+
+  function load(x,auto){
+    i=x;
+    a.src=cfg.tracks[i];
+    t.textContent=names[i];
+    [...list.children].forEach((e,n)=>e.classList.toggle("active",n===i));
+    if(auto) a.play();
+  }
+
+  load(0);
+
+  root.querySelector("#play").onclick=()=>a.paused?a.play():a.pause();
+  a.onplay=()=>root.querySelector("#play").textContent="❚❚";
+  a.onpause=()=>root.querySelector("#play").textContent="▶";
+  a.ontimeupdate=()=>s.value=a.currentTime/a.duration*100||0;
+  s.oninput=()=>a.currentTime=a.duration*s.value/100;
+  root.querySelector("#next").onclick=()=>load((i+1)%cfg.tracks.length,true);
+  root.querySelector("#prev").onclick=()=>load((i-1+cfg.tracks.length)%cfg.tracks.length,true);
+}
+
+/* ---------- UPDATE ---------- */
+function update(){
+  Object.assign(current,{
+    accent:accent.value,
+    cover:cover.value,
+    tracks:tracks.value.trim().split("\n").filter(Boolean),
+    glow:glowToggle.checked
+  });
+
+  renderPlayer(preview,current);
+
+  code.value=
+`<div id="GENIALLY_AUDIO"></div>
+<script>
+(${renderPlayer.toString()})(document.getElementById("GENIALLY_AUDIO"), ${JSON.stringify(current)});
+<\/script>`;
+}
+
+function setMode(m){
+  panel.style.display=m==="player"?"none":"block";
+}
+
+/* ---------- INIT ---------- */
+const presets=document.getElementById("presets");
+const accent=document.getElementById("accent");
+const cover=document.getElementById("cover");
+const tracks=document.getElementById("tracks");
+const glowToggle=document.getElementById("glowToggle");
+const preview=document.getElementById("preview");
+const code=document.getElementById("code");
+
+cover.value="https://picsum.photos/300";
+tracks.value=`https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3
+https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3`;
+
+applyPreset("spotify");
+</script>
+
+</body>
+</html>
