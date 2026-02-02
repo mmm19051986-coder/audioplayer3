@@ -14,7 +14,7 @@ body{
   height:100vh;
 }
 
-/* ---------- PANEL ---------- */
+/* ===== PANEL ===== */
 #panel{
   width:380px;
   padding:16px;
@@ -30,11 +30,11 @@ body{
   justify-content:center;
 }
 
-/* ---------- UI ---------- */
+/* ===== UI ===== */
 h3{margin:4px 0 12px}
 label{
   font-size:13px;
-  opacity:.75;
+  opacity:.8;
   margin-top:10px;
   display:block;
 }
@@ -59,7 +59,6 @@ button{
   cursor:pointer;
   margin-top:10px;
 }
-
 .mode{
   display:flex;
   gap:6px;
@@ -67,7 +66,7 @@ button{
 }
 .mode button{flex:1}
 
-/* ---------- PRESETS ---------- */
+/* ===== PRESETS ===== */
 .presets{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -124,7 +123,7 @@ button{
 <div id="preview"></div>
 
 <script>
-/* ---------- PRESETS ---------- */
+/* ===== PRESETS ===== */
 const PRESETS={
   spotify:{name:"Spotify",accent:"#1db954",bg:"rgba(255,255,255,.08)",blur:14,radius:20,glow:false},
   neon:{name:"Neon",accent:"#00faff",bg:"rgba(0,0,0,.35)",blur:20,radius:24,glow:true},
@@ -134,7 +133,7 @@ const PRESETS={
 
 let current={preset:"spotify"};
 
-/* ---------- PRESET UI ---------- */
+/* ===== PRESET UI ===== */
 function buildPresets(){
   presets.innerHTML="";
   Object.entries(PRESETS).forEach(([k,p])=>{
@@ -155,7 +154,7 @@ function applyPreset(key){
   update();
 }
 
-/* ---------- PLAYER (GENIALLY SAFE) ---------- */
+/* ===== PLAYER (GENIALLY SAFE + VOLUME FIX) ===== */
 function renderPlayer(target,cfg){
   const glow = cfg.glow
     ? `box-shadow:0 0 12px ${cfg.accent},0 0 24px ${cfg.accent}66;`
@@ -173,9 +172,8 @@ function renderPlayer(target,cfg){
   font-family:Arial,sans-serif;
 }
 
-/* RESET GENIALLY */
-#GENIALLY_AUDIO button{all:unset}
-#GENIALLY_AUDIO input{all:unset}
+/* RESET только кнопок */
+#GENIALLY_AUDIO button{ all:unset }
 
 /* PLAYER */
 #GENIALLY_AUDIO .player{
@@ -192,6 +190,8 @@ function renderPlayer(target,cfg){
   width:100%;
   border-radius:14px;
 }
+
+/* CONTROLS */
 #GENIALLY_AUDIO .ctrl,
 #GENIALLY_AUDIO .ctrl2{
   display:flex;
@@ -211,9 +211,28 @@ function renderPlayer(target,cfg){
   cursor:pointer;
   box-shadow:0 0 8px var(--accent);
 }
+
+/* RANGE FIX */
 #GENIALLY_AUDIO input[type=range]{
+  -webkit-appearance:none;
+  appearance:none;
   width:100%;
+  height:6px;
+  background:rgba(255,255,255,.3);
+  border-radius:6px;
+  cursor:pointer;
+  margin:8px 0;
 }
+#GENIALLY_AUDIO input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 6px var(--accent);
+}
+
+/* PLAYLIST */
 #GENIALLY_AUDIO .list{
   max-height:120px;
   overflow:auto;
@@ -243,7 +262,7 @@ function renderPlayer(target,cfg){
     <button id="next">▶▶</button>
   </div>
 
-  <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+  <input type="range" id="volume" min="0" max="1" step="0.01">
 
   <div class="ctrl2">
     <button id="shuffle">🔀</button>
@@ -261,7 +280,12 @@ function renderPlayer(target,cfg){
   const s=root.querySelector("#seek");
   const v=root.querySelector("#volume");
   const list=root.querySelector(".list");
+
   let i=0, shuffle=false, repeat=false;
+
+  /* FIX: гарантируем громкость */
+  a.volume = 1;
+  v.value = 1;
 
   const names=cfg.tracks.map(x=>decodeURIComponent(x.split("/").pop().replace(".mp3","")));
 
@@ -295,7 +319,7 @@ function renderPlayer(target,cfg){
   a.ontimeupdate=()=>s.value=a.currentTime/a.duration*100||0;
   s.oninput=()=>a.currentTime=a.duration*s.value/100;
 
-  v.oninput=()=>a.volume=v.value;
+  v.oninput=()=>a.volume=Number(v.value);
 
   root.querySelector("#next").onclick=()=>load(nextIndex(),true);
   root.querySelector("#prev").onclick=()=>load((i-1+cfg.tracks.length)%cfg.tracks.length,true);
@@ -312,7 +336,7 @@ function renderPlayer(target,cfg){
   a.onended=()=>repeat?(a.currentTime=0,a.play()):load(nextIndex(),true);
 }
 
-/* ---------- UPDATE ---------- */
+/* ===== UPDATE ===== */
 function update(){
   Object.assign(current,{
     accent:accent.value,
@@ -334,7 +358,7 @@ function setMode(m){
   panel.style.display=m==="player"?"none":"block";
 }
 
-/* ---------- INIT ---------- */
+/* ===== INIT ===== */
 const presets=document.getElementById("presets");
 const accent=document.getElementById("accent");
 const cover=document.getElementById("cover");
